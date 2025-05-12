@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Collaborative Code Editor</title>
+  <!-- CodeMirror CSS -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.css" />
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f5f5f5;
+      margin: 0;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    h2 {
+      margin-bottom: 10px;
+    }
+    #status {
+      margin-bottom: 15px;
+      font-weight: bold;
+    }
+    #room-container, #editor-section {
+      width: 80%;
+      max-width: 900px;
+      margin-bottom: 20px;
+      text-align: left;
+    }
+    #room-container label,
+    #room-container input,
+    #room-container button {
+      font-size: 20px;
+      margin: 5px;
+      padding: 5px 10px;
+    }
+    #controls {
+      margin-bottom: 10px;
+    }
+    #controls label {
+      font-size: 16px;
+      margin-right: 10px;
+    }
+    #controls select {
+      padding: 5px 10px;
+      font-size: 16px;
+    }
+    .CodeMirror {
+      border: 1px solid #ccc;
+      height: 500px;
+      font-size: 16px;
+    }
+  </style>
+  <!-- SockJS and STOMP -->
+  <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1.5.1/dist/sockjs.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+  <!-- CodeMirror JS -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.js"></script>
+  <!-- CodeMirror modes -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/javascript/javascript.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/python/python.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/clike/clike.min.js"></script>
+</head>
+<body>
+  <h2>Collaborative Code Editor</h2>
+  <p id="status">🔴 Not Connected</p>
+  
+  <!-- Room Controls -->
+  <div id="room-container">
+    <label for="roomId">Room ID:</label>
+    <input type="text" id="roomId" placeholder="Enter room ID" />
+    <button id="createRoomBtn">Create Room</button>
+    <button id="joinRoomBtn">Join Room</button>
+  </div>
+  
+  <!-- Editor Section (hidden until room is selected) -->
+  <div id="editor-section" style="display: none;">
+    <div id="controls">
+      <label for="language">Language:</label>
+      <select id="language">
+        <option value="javascript" selected>JavaScript</option>
+        <option value="python">Python</option>
+        <option value="java">Java</option>
+        <option value="cpp">C++</option>
+        <option value="c">C</option>
+        <option value="csharp">C#</option>
+      </select>
+    </div>
+    <textarea id="editor" placeholder="Write your code here..."></textarea>
+  </div>
+  
+  <script>
+    let stompClient = null;
+    let suppressChange = false;
+    let codeMirrorEditor = null;
+    let currentRoom = null; // Stores the current room ID
+
+    // Map language selection to CodeMirror mode
+    function getModeForLanguage(lang) {
+      switch(lang) {
+        case 'javascript': return 'javascript';
+        case 'python': return 'python';
+        case 'java': return 'text/x-java';
+        case 'cpp': return 'text/x-c++src';
+        case 'c': return 'text/x-csrc';
+        case 'csharp': return 'text/x-csharp';
+        default: return 'javascript';
+      }
+    }
+
+    // Update CodeMirror mode based on selected language
+    function updateEditorMode() {
+      const language = document.getElementById("language").value;
+      const mode = getModeForLanguage(language);
+      if (codeMirrorEditor) {
+        codeMirrorEditor.setOption("mode", mode);
+      }
+    }
+
+    // Connect to WebSocket server for a specific room
+    function connectWebSocket(roomId) {
+      console.log("Connecting to WebSocket for room: " + roomId);
+      const socket = new SockJS("http://localhost:8080/editor-websocket");
+      stompClient = Stomp.over(socket);
+      stompClient.debug = (msg) => console.log("STOMP: " + msg);
+
+      stompClient.connect({}, function(frame) {
+        console.log("Connected: " + frame);
+        document.getElementById("status").innerText = "🟢 Connected (Room: " + roomId + ")";
+        // Subscribe to room-specific topic
+        stompClient.subscribe("/topic/editor/" + roomId, function(message) {
+          console.log("Received message: " + message.body);
+          const data = JSON.parse(message.body);
+          if (codeMirrorEditor && codeMirrorEditor.getValue() !== data.content) {
+            suppressChange = true;
+            codeMirrorEditor.setValue(data.content);
+            suppressChange = false;
+          }
+        });
+      }, function(error) {
+        console.error("WebSocket Connection Error:", error);
+        document.getElementById("status").innerText = "🔴 Disconnected";
+      });
+    }
+
+    // Generate a random room ID (alphanumeric)
+    function generateRoomId(length = 6) {
+      let result = '';
+      const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+      for (let i = 0; i < length; i++) {
+         result += characters.charAt(Math.floor(Math.random() * characters.length));
+      }
+      return result;
+    }
+  
+    // Initialize the CodeMirror editor and set up collaboration events
+    function initializeEditor() {
+      // Initialize CodeMirror editor from the textarea
+      codeMirrorEditor = CodeMirror.fromTextArea(document.getElementById("editor"), {
+        lineNumbers: true,
+        mode: getModeForLanguage(document.getElementById("language").value),
+        theme: "default"
+      });
+
+      // Listen for changes in CodeMirror editor (throttle updates)
+      let sendTimeout;
+      codeMirrorEditor.on("change", function(instance, changeObj) {
+        if (suppressChange) return;
+        clearTimeout(sendTimeout);
+        sendTimeout = setTimeout(function() {
+          const content = instance.getValue();
+          console.log("Sending update: " + content);
+          if (stompClient && stompClient.connected && currentRoom) {
+            stompClient.send("/app/update/" + currentRoom, {}, JSON.stringify({ content: content }));
+          }
+        }, 100);
+      });
+
+      // Update mode when language selection changes
+      document.getElementById("language").addEventListener("change", function() {
+        updateEditorMode();
+      });
+    }
+
+    // Handle room creation
+    document.getElementById("createRoomBtn").addEventListener("click", function() {
+        const roomname=getroomname();
+      const roomId = generateRoomId();
+      document.getElementById("roomId").value = roomId;
+      currentRoom = roomId;
+      // Hide room controls and show editor section
+      document.getElementById("room-container").style.display = "none";
+      document.getElementById("editor-section").style.display = "block";
+      initializeEditor();
+      connectWebSocket(currentRoom);
+    });
+
+    // Handle joining an existing room
+    document.getElementById("joinRoomBtn").addEventListener("click", function() {
+      const roomId = document.getElementById("roomId").value.trim();
+      if (roomId === "") {
+        alert("Please enter a valid Room ID.");
+        return;
+      }
+      currentRoom = roomId;
+      // Hide room controls and show editor section
+      document.getElementById("room-container").style.display = "none";
+      document.getElementById("editor-section").style.display = "block";
+      initializeEditor();
+      connectWebSocket(currentRoom);
+    });
+  </script>
+</body>
+</html>
