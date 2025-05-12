@@ -1,89 +1,94 @@
-🚀 Collaborative Code Editor
-A real-time collaborative code editor that allows multiple users to join a room and write code together. Built with:
+# Collaborative Code Editor
 
-Frontend: HTML, JavaScript, CodeMirror
+A real-time collaborative code editor built with **HTML, JavaScript (CodeMirror, SockJS, STOMP)** on the frontend and **Spring Boot WebSocket** on the backend. This application allows multiple users to join a room and collaboratively edit code in real-time with language highlighting support.
 
-Backend: Spring Boot, WebSocket (STOMP over SockJS)
+---
 
-🔧 Features
-🔗 Room-based collaboration (create or join a room)
+## 🌐 Features
 
-✍️ Real-time code syncing using WebSockets
+* 🔗 Real-time WebSocket-based code synchronization
+* 📜 Support for multiple programming languages:
 
-🌐 Language mode switching: JavaScript, Python, Java, C++, C, C#
+  * JavaScript
+  * Python
+  * Java
+  * C++
+  * C
+  * C#
+*  Syntax highlighting with CodeMirror
+*  Join/Create collaborative rooms using unique Room IDs
+* Intelligent throttling to avoid unnecessary WebSocket messages
 
-🖥️ Syntax highlighting via CodeMirror
+---
+
+## 🏗️ Tech Stack
+
+### Frontend
+
+* HTML, CSS
+* JavaScript (Vanilla)
+* CodeMirror (for code editing)
+* SockJS (WebSocket polyfill)
+* STOMP.js (messaging over WebSockets)
+
+### Backend
+
+* Spring Boot (Java)
+* WebSocket support with STOMP over SockJS
+
+---
 
 
-🛠️ How to Run
-Backend (Spring Boot)
-Clone the repository:
+### 🔧 Prerequisites
 
-bash
-Copy
-Edit
-git clone https://github.com/your-username/Code-Live.git
-cd Code-Live
-Open the project in your preferred IDE (IntelliJ, VS Code, Eclipse).
+* Java 11 or above
+* Maven or Gradle
 
-Make sure editor-websocket endpoint is configured in a Spring Boot WebSocket controller.
+### ⚙️ Backend Setup (Spring Boot)
 
-Run the Spring Boot application:
+1. Clone the repository and navigate to backend folder:
 
-bash
-Copy
-Edit
-./mvnw spring-boot:run
-Backend runs at http://localhost:8080
+   ```bash
+   git clone 
+   cd collaborative-editor-backend
+   ```
+2. Build and run the Spring Boot application:
 
-Frontend (HTML + JavaScript)
-Open index.html in any browser.
+   ```bash
+   ./mvnw spring-boot:run
+   ```
 
-Click "Create Room" or enter a Room ID and click "Join Room".
+   > The WebSocket endpoint will be available at `http://localhost:8080/editor-websocket`
 
-Start editing code and see changes reflected in real-time for all users in the same room.
+### 💻 Frontend Setup
 
-📂 Project Structure
-bash
-Copy
-Edit
-Code-Live/
-├── backend/           # Spring Boot server
-│   └── WebSocketConfig.java, EditorController.java
-├── frontend/
-│   └── index.html     # The HTML/JS CodeMirror-based editor
-└── README.md
-🌐 WebSocket Endpoints
-ws://localhost:8080/editor-websocket — SockJS endpoint
+1. Open `index.html` in a browser
+2. Enter a room ID or create a new one
+3. Start collaborating in real-time!
 
-Subscribe: /topic/editor/{roomId}
+---
 
-Send: /app/update/{roomId}
+## 🔄 Room Management
 
-📦 Dependencies Used
-Frontend:
-CodeMirror
+* **Create Room**: Generates a random alphanumeric Room ID
+* **Join Room**: Enter an existing Room ID to join others in real-time editing
 
-SockJS
+---
 
-STOMP.js
 
-Backend:
-Spring Boot
+## 💡 Future Enhancements
 
-Spring WebSocket
+* User presence indicators
+* Cursor sync & selections
+* Chat integration
+* Authentication & room access control
 
-STOMP support
+---
 
-✅ To-Do / Improvements
- Add authentication
+## 🧑‍💻 Author
 
- Shareable room links
+**\[Mohammed shoaib]**
+Feel free to contribute or suggest improvements!
 
- File saving/export
-
- Chat feature
-
-📃 License
-MIT License. Feel free to fork and contribute!
+---
 
